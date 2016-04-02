@@ -1,0 +1,25 @@
+{
+  "name": "sonos-lcdd",
+  "version": "0.0.1",
+  "description": "Update an LCD display when the track changes on a Sonos",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Rocketeer007/sonos-lcdd.git"
+  },
+  "author": "Nick Price <n.m.price@gmail.com>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Rocketeer007/sonos-lcdd/issues"
+  },
+  "homepage": "https://github.com/Rocketeer007/sonos-lcdd#readme",
+  "dependencies": {
+    "debug": "2.2.0",
+    "xml2js": "0.4.15",
+    "sonos": "0.12.0",
+    "node-lcdd": "git://github.com/Rocketeer007/node-lcdd.git#master"
+  }
+}
