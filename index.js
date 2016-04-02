@@ -4,18 +4,38 @@ var xml2js = require('xml2js');
 var util = require('util');
 var url = require('url');
 var LCDdClient = require('node-lcdd');
-var lcd = new LCDdClient('localhost', 13666);
+var lcd = new LCDdClient('localhost', 13666, 'sonos');
 
-var x = new Listener(new Sonos(process.env.SONOS_HOST || '192.168.2.11'))
-x.listen(function (err) {
+// HACK - For cloud9, I'm using localhost, and setting up an SSH Tunnel to the real Sonos
+var sonosListener = new Listener(new Sonos(process.env.SONOS_HOST || 'localhost'));
+lcd.init();
+
+lcd.on('ready', function createScreens() {
+    lcd.addScreen('sonos-nowplaying', {name: 'Sonos', priority: 'info'}, function createWidgets(err, response) {
+        if (err) console.log('Error creating Now Playing Screen:', err);
+        else {
+            lcd.addWidget('sonos-nowplaying', 'title', 'title', ['{Sonos}']);
+            lcd.addWidget('sonos-nowplaying', 'icon', 'icon');
+            lcd.addWidget('sonos-nowplaying', 'line1', 'string');
+            lcd.addWidget('sonos-nowplaying', 'line2', 'string');
+            lcd.addWidget('sonos-nowplaying', 'line3', 'string');
+        }
+    });
+    
+    // Only connect to Sonos after connecting to display
+    sonosListener.listen(listenSonos);
+});
+
+
+var listenSonos = function (err) {
   if (err) throw err
 
-  x.addService('/MediaRenderer/AVTransport/Event', function (error, sid) {
+  sonosListener.addService('/MediaRenderer/AVTransport/Event', function (error, sid) {
     if (error) throw err
     console.log('Successfully subscribed, with subscription id', sid)
   })
 
-  x.on('serviceEvent', function (endpoint, sid, data) {
+  sonosListener.on('serviceEvent', function (endpoint, sid, data) {
     //console.log('Received event from', endpoint, '(' + sid + ') with data:', data, '\n\n');
 
     (new xml2js.Parser()).parseString(data['LastChange'], function (err, json) {
@@ -84,6 +104,20 @@ x.listen(function (err) {
         console.log('Now', transportState);
         if (!isRadio) console.log('\tTrack:', trackTitle, '/', trackArtist, '/', trackAlbum);
         console.log('\tRadio:', radioTitle, '/', radioStream, '/', radioShowMd);
+        
+        if (transportState == 'PAUSED_PLAYBACK') lcd.setWidget('sonos-nowplaying', 'icon', [1, 2, 'PAUSE']);
+        else if (transportState == 'PLAYING') lcd.setWidget('sonos-nowplaying', 'icon', [1, 2, 'PLAY']);
+        else lcd.setWidget('sonos-nowplaying', 'icon', [1, 2, 'ELLIPSIS']);
+        
+        if (isRadio) {
+            lcd.setWidget('sonos-nowplaying', 'line1', [4, 2, "{"+radioTitle+"}"]);
+            lcd.setWidget('sonos-nowplaying', 'line2', [1, 3, "{"+radioStream+"}"]);
+            lcd.setWidget('sonos-nowplaying', 'line3', [1, 4, "{"+radioShowMd+"}"]);
+        } else {
+            lcd.setWidget('sonos-nowplaying', 'line1', [4, 2, "{"+trackTitle+"}"]);
+            lcd.setWidget('sonos-nowplaying', 'line2', [1, 3, "{"+trackArtist+' - '+trackAlbum+"}"]);
+            lcd.setWidget('sonos-nowplaying', 'line3', [1, 4, "{"+radioTitle+"}"]);
+        }
     })
   })
-})
+};
