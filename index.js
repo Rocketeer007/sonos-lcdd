@@ -8,17 +8,19 @@ var lcd = new LCDdClient('localhost', 13666, 'sonos');
 
 // HACK - For cloud9, I'm using localhost, and setting up an SSH Tunnel to the real Sonos
 var sonosListener = new Listener(new Sonos(process.env.SONOS_HOST || 'localhost'));
-lcd.init();
+
+// Define the scroll speed for all text scrollers
+var scrollSpeed = 2;
 
 lcd.on('ready', function createScreens() {
     lcd.addScreen('sonos-nowplaying', {name: 'Sonos', priority: 'info'}, function createWidgets(err, response) {
         if (err) console.log('Error creating Now Playing Screen:', err);
         else {
-            lcd.addWidget('sonos-nowplaying', 'title', 'title', ['{Sonos}']);
-            lcd.addWidget('sonos-nowplaying', 'icon', 'icon');
-            lcd.addWidget('sonos-nowplaying', 'line1', 'string');
-            lcd.addWidget('sonos-nowplaying', 'line2', 'string');
-            lcd.addWidget('sonos-nowplaying', 'line3', 'string');
+            lcd.addTitleWidget('sonos-nowplaying', 'title', 'Sonos');
+            lcd.addIconWidget('sonos-nowplaying', 'icon', 1, 2, LCDdClient.ICON_NAME.ELLIPSIS);
+            lcd.addWidget('sonos-nowplaying', 'line1', LCDdClient.WIDGET_TYPE.SCROLLER);
+            lcd.addWidget('sonos-nowplaying', 'line2', LCDdClient.WIDGET_TYPE.SCROLLER);
+            lcd.addWidget('sonos-nowplaying', 'line3', LCDdClient.WIDGET_TYPE.SCROLLER);
         }
     });
     
@@ -60,6 +62,7 @@ var listenSonos = function (err) {
             case 'hls-radio:':
                 isRadio = true;
                 break;
+            case 'x-sonosprog-spotify:':
             case 'x-sonos-spotify:':
             case 'http:':
             case 'x-file-cifs:':
@@ -105,18 +108,26 @@ var listenSonos = function (err) {
         if (!isRadio) console.log('\tTrack:', trackTitle, '/', trackArtist, '/', trackAlbum);
         console.log('\tRadio:', radioTitle, '/', radioStream, '/', radioShowMd);
         
-        if (transportState == 'PAUSED_PLAYBACK') lcd.setWidget('sonos-nowplaying', 'icon', [1, 2, 'PAUSE']);
-        else if (transportState == 'PLAYING') lcd.setWidget('sonos-nowplaying', 'icon', [1, 2, 'PLAY']);
-        else lcd.setWidget('sonos-nowplaying', 'icon', [1, 2, 'ELLIPSIS']);
+        switch (transportState) {
+            case 'PAUSED_PLAYBACK':
+                lcd.setIconWidget('sonos-nowplaying', 'icon', 1, 2, LCDdClient.ICON_NAME.PAUSE);
+                break;
+            case 'PLAYING':
+                lcd.setIconWidget('sonos-nowplaying', 'icon', 1, 2, LCDdClient.ICON_NAME.PLAY);
+                break;
+            default:
+                console.log('Transport State is not handled:', transportState);
+                lcd.setIconWidget('sonos-nowplaying', 'icon', 1, 2, LCDdClient.ICON_NAME.ELLIPSIS);
+        }
         
         if (isRadio) {
-            lcd.setWidget('sonos-nowplaying', 'line1', [4, 2, "{"+radioTitle+"}"]);
-            lcd.setWidget('sonos-nowplaying', 'line2', [1, 3, "{"+radioStream+"}"]);
-            lcd.setWidget('sonos-nowplaying', 'line3', [1, 4, "{"+radioShowMd+"}"]);
+            lcd.setScrollerWidget('sonos-nowplaying', 'line1', 4, 2, 20, 2, LCDdClient.DIRECTION.HORIZONTAL, scrollSpeed, radioTitle);
+            lcd.setScrollerWidget('sonos-nowplaying', 'line2', 1, 3, 20, 3, LCDdClient.DIRECTION.HORIZONTAL, scrollSpeed, radioStream);
+            lcd.setScrollerWidget('sonos-nowplaying', 'line3', 1, 4, 20, 4, LCDdClient.DIRECTION.HORIZONTAL, scrollSpeed, radioShowMd);
         } else {
-            lcd.setWidget('sonos-nowplaying', 'line1', [4, 2, "{"+trackTitle+"}"]);
-            lcd.setWidget('sonos-nowplaying', 'line2', [1, 3, "{"+trackArtist+' - '+trackAlbum+"}"]);
-            lcd.setWidget('sonos-nowplaying', 'line3', [1, 4, "{"+radioTitle+"}"]);
+            lcd.setScrollerWidget('sonos-nowplaying', 'line1', 4, 2, 20, 2, LCDdClient.DIRECTION.HORIZONTAL, scrollSpeed, trackTitle);
+            lcd.setScrollerWidget('sonos-nowplaying', 'line2', 1, 3, 20, 3, LCDdClient.DIRECTION.HORIZONTAL, scrollSpeed, trackArtist+' - '+trackAlbum);
+            lcd.setScrollerWidget('sonos-nowplaying', 'line3', 1, 4, 20, 4, LCDdClient.DIRECTION.HORIZONTAL, scrollSpeed, radioTitle);
         }
     })
   })
